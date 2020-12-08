@@ -1,0 +1,53 @@
+plugins {
+	id 'org.springframework.boot' version '2.3.5.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.10.RELEASE'
+	id 'java'
+}
+
+group = 'com.ssafy'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+    
+    // MyBatis, MySQL, JDBC
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:1.3.2'
+	implementation 'mysql:mysql-connector-java'
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	
+	// Swagger, ui
+	compile group: 'io.springfox', name: 'springfox-swagger2', version: '2.9.2'
+	compile group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.9.2'
+
+	// Security, JWT
+	compile("org.springframework.boot:spring-boot-starter-security")
+	compile group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'
+	runtime group: 'io.jsonwebtoken', name: 'jjwt-impl', version: '0.11.1'
+	
+	// JDK 버전에러
+	implementation "jakarta.xml.bind:jakarta.xml.bind-api:2.3.2"
+    implementation "org.glassfish.jaxb:jaxb-runtime:2.3.2"
+	
+	// Base64 encoding
+	compile 'org.apache.commons:commons-lang3:3.5'
+	
+	compile 'javax.validation:validation-api:2.0.1.Final'
+	
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-params:5.0.0"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-api:5.0.0"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.0.0"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.0.0"
+}
+
+test {
+	useJUnitPlatform()
+}

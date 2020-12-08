@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.catchcam.repository.UserRepository">
+	
+	<!-- 모든 유저 목록 검색 -->
+	<select id="getUserList" resultType="UserResponse">
+		SELECT user_id AS userId, user_name as userName, email, password, zip_code as zipCode, addr1, addr2
+		  from user_list;
+	</select>	
+	
+	<!-- 유저 정보 생성 (회원 가입) -->
+	<insert id="insertUser">
+		INSERT INTO user_list(email, password, user_name)
+		VALUES(#{email}, #{password}, #{userName});
+	</insert>
+	
+	<!-- 사용자 Email로 검색 -->
+	<select id="findUserByEmail" resultType="UserAuthDetails">
+		SELECT user_id AS userId, user_name as userName, email, password
+		  FROM user_list
+		 WHERE email = #{email};
+	</select>
+	
+	<!-- 사용자 userId로 검색 -->
+	<select id="findUserByUserId" resultType="UserAuthDetails">
+		select user_id AS userId, user_name as userName, email, password
+		  from user_list
+		 where user_id = #{userId}
+	</select>
+
+	<!-- 이메일 닉네임 체크  -->
+	<select id="checkValidEmail" resultType="Integer">
+		SELECT COUNT(1) 
+		  FROM user_list
+		 WHERE email = #{email};
+	</select>
+	
+</mapper>

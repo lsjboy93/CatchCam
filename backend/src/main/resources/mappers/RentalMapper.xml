@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.catchcam.repository.RentalRepository">
+	
+	<!-- 모든 대여 목록 검색 -->
+	<select id="getRentalList" resultType="RentalResponse">
+		select rt.rental_id as rentalId, 
+			   rt.item_id as itemId, 
+			   rt.user_id as userId, 
+			   rt.store_id as storeId, 
+			   rt.rent_date as rentDate, 
+			   rt.return_date as returnDate, 
+			   rt.act_return_date as actReturnDate,
+			   date_format(rt.rent_date, '%Y-%m-%d') as strRentDate, 
+			   date_format(rt.return_date, '%Y-%m-%d') as strReturnDate, 
+			   date_format(rt.act_return_date, '%Y-%m-%d') as strActReturnDate,
+               case
+               when rt.rent_date > now() then '예약중'
+				when rt.act_return_date is not null then '반납완료'
+                else '대여중'
+			   end as status,
+               it.item_name as itemName,
+               it.profile_img as profileImg,
+               it.cost,
+               st.store_name as storeName,
+               st.tel_no as telNo,
+               st.open_time as openTime,
+               st.close_time as closeTime,
+               st.address,
+               if(rv.rental_id is not null, 'Y', 'N') as reviewYn
+		  from rental_list rt
+			   inner join
+               item_list it
+               on
+               rt.item_id = it.item_id
+               left outer join
+               store_list st
+               on
+               rt.store_id = st.store_id
+               left outer join
+               review_list rv
+               on
+               rt.rental_id = rv.rental_id
+		 where rt.user_id = #{userId}
+	  order by rt.rental_id desc;
+	</select>	
+	
+	<!-- 대여 정보 생성 (대여하기) -->
+	<insert id="insertRental">
+		insert into rental_list (item_id, user_id, store_id, rent_date, return_date)
+		values (#{itemId}, #{userId}, #{storeId}, #{rentDate}, #{returnDate});
+	</insert>
+	
+	<!-- 모든 지점 목록 검색 -->
+	<select id="getStoreList" resultType="StoreResponse">
+		select store_id as storeId,
+			   store_name as storeName,
+			   tel_no as telNo,
+			   open_time as openTime,
+			   close_time as closeTime,
+			   latitude,
+			   longitude,
+			   address
+		  from store_list;
+	</select>	
+	
+	<!-- 단일 상품 정보 검색 -->
+	<select id="getItemInfo" resultType="ItemResponse">
+		select item_id as itemId,
+			   item_name as itemName,
+			   profile_img as profileImg,
+			   description,
+			   cost
+		  from item_list
+		 where item_id = #{itemId};
+	</select>
+	
+	<!-- 상품 리뷰 조회(평점, 리뷰개수 등) -->
+	<select id="getItemReview" resultType="ReviewListResponse">
+		select rt.item_id as itemId,
+			   ifnull(format(avg(truncate(rv.star_rate, 1)), 1), 0) as avgRate,
+			   count(1) as reviewCount,
+			   if(exists (select 1 
+			   				from review_list trv 
+			   					 inner join 
+			   					 rental_list trt 
+			   					 on 
+			   					 trv.rental_id = trt.rental_id 
+			   			   where trt.item_id = #{itemId} 
+			   			     and trv.user_id = #{userId}), 'Y', 'N') as reviewYn
+		  from review_list rv
+		  	   inner join
+		  	   rental_list rt
+		  	   on
+		  	   rv.rental_id = rt.rental_id
+		 where rt.item_id = #{itemId}
+	  group by rt.item_id;
+	</select>
+	
+	<!-- 리뷰 목록 조회 -->
+	<select id="getReviewList" resultType="ReviewResponse">
+		select rv.review_id as reviewId,
+			   rv.user_id as userId,
+			   (select user_name from user_list where user_id = rv.user_id) as userName,
+			   rv.content,
+			   date_format(rv.create_date, '%Y-%m-%d') as strCreateDate,
+			   date_format(rv.modify_date, '%Y-%m-%d') as strModifyDate,
+			   rv.star_rate as starRate,
+			   if(rv.user_id = #{userId}, 'Y', 'N') as writerYn
+		  from review_list rv
+		  	   inner join
+		  	   rental_list rt
+		  	   on
+		  	   rv.rental_id = rt.rental_id
+		 where rt.item_id = #{itemId}
+	  order by rv.review_id desc
+	     limit #{startPage}, 5;
+	</select>	
+	
+	<!-- 대여한 사람과 리뷰를 작성할 사람이 같은 지 확인 -->
+	<select id="checkRentalUser" resultType="String">
+		select if(exists (select 1 from rental_list where rental_id = #{rentalId} and user_id = #{userId}), 'Y', 'N') as rentalUserYn
+		  from dual;
+	</select>
+	
+	<!-- 리뷰 작성한 사람과 리뷰를 수정/삭제할 사람이 같은 지 확인 -->
+	<select id="checkReviewUser" resultType="String">
+		select if(exists (select 1 from review_list where review_id = #{reviewId} and user_id = #{userId}), 'Y', 'N') as reviewUserYn
+		  from dual;
+	</select>
+	
+	<!-- 리뷰 생성 (리뷰 작성) -->
+	<insert id="insertReview">
+		insert into review_list (rental_id, user_id, content, create_date, modify_date, star_rate)
+		values (#{rental.rentalId}, #{userId}, #{rental.content}, now(), now(), #{rental.starRate});
+	</insert>
+	
+	<!--  리뷰 수정 -->
+	<update id="updateReview">
+		update review_list
+		   set content = #{content}, 
+		   	   star_rate = #{starRate}, 
+		   	   modify_date = now()
+		 where review_id = #{reviewId}
+	</update>
+	
+	<!--  리뷰 삭제 -->
+	<delete id="deleteReview">
+		delete 
+		  from review_list
+		 where review_id = #{reviewId}
+	</delete>	
+	
+	<!-- 대여 예약 취소 -->
+	<delete id="deleteRental">
+		delete 
+		  from rental_list
+		 where rental_id = #{rentalId}
+	</delete>	
+	
+	<!-- 최신 리뷰 검색 -->
+	<select id="getRecentReviews" resultType="ReviewResponse">
+		select rv.review_id as reviewId,
+			   rv.user_id as userId,
+			   (select user_name from user_list where user_id = rv.user_id) as userName,
+			   rv.content,
+			   date_format(rv.create_date, '%Y-%m-%d') as strCreateDate,
+			   date_format(rv.modify_date, '%Y-%m-%d') as strModifyDate,
+			   rv.star_rate as starRate
+		  from review_list rv
+		  	   inner join
+		  	   rental_list rt
+		  	   on
+		  	   rv.rental_id = rt.rental_id
+	  order by rv.review_id desc
+	     limit 0, 3;
+	</select>
+	
+	<!-- 대여 취소 전 유효성 검사 -->
+	<select id="checkRentalCancelValid" resultType="RentalCancelValidResponse">
+		select if(rent_date > now(), 'Y', 'N') as validDate,
+			   if(rt.user_id = #{userId}, 'Y', 'N') as isMine,
+               if(rv.review_id is not null, 'Y', 'N') as existReview
+		  from rental_list rt
+		  	   left outer join
+		  	   review_list rv
+		  	   on
+		  	   rt.rental_id = rv.rental_id
+		 where rt.rental_id = #{rentalId};
+	</select>
+	
+</mapper>
